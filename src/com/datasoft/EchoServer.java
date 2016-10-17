@@ -10,8 +10,8 @@ import java.net.*;
 import java.util.*;
 import java.io.IOException;
 
-public class IntgenServer {
-    public static int DEFAULT_PORT = 8099;
+public class EchoServer {
+    public static int DEFAULT_PORT = 7;
 
     public static void main(String[] args) {
         int port;
@@ -20,7 +20,7 @@ public class IntgenServer {
         } catch (RuntimeException ex) {
             port = DEFAULT_PORT;
         }
-        System.out.println("Listening for connections on port: " + port);
+        System.out.println("Listening for connections on port" + port);
         ServerSocketChannel serverChannel;
         Selector selector;
         try {
@@ -53,30 +53,28 @@ public class IntgenServer {
                         SocketChannel client = server.accept();
                         System.out.println("Accepted connection from" + client);
                         client.configureBlocking(false);
-                        SelectionKey key2 = client.register(selector, SelectionKey.
-                                OP_WRITE);
-                        ByteBuffer output = ByteBuffer.allocate(4);
-                        output.putInt(0);
-                        output.flip();
-                        key2.attach(output);
-                    } else if (key.isWritable()) {
+                        SelectionKey clientKey = client.register(
+                                selector, SelectionKey.OP_WRITE | SelectionKey.OP_READ);
+                        ByteBuffer buffer = ByteBuffer.allocate(100);
+                        clientKey.attach(buffer);
+                    }
+                    if (key.isReadable()) {
                         SocketChannel client = (SocketChannel) key.channel();
                         ByteBuffer output = (ByteBuffer) key.attachment();
-                        if (!output.hasRemaining()) {
-                            output.rewind();
-                            int value = output.getInt();
-                            output.clear();
-                            output.putInt(value + 1);
-                            output.flip();
-                        }
+                        client.read(output);
+                    }
+                    if (key.isWritable()) {
+                        SocketChannel client = (SocketChannel) key.channel();
+                        ByteBuffer output = (ByteBuffer) key.attachment();
+                        output.flip();
                         client.write(output);
+                        output.compact();
                     }
                 } catch (IOException ex) {
                     key.cancel();
                     try {
                         key.channel().close();
                     } catch (IOException cex) {
-                        cex.toString();
                     }
                 }
             }
